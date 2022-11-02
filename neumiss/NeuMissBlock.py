@@ -50,7 +50,7 @@ class NeuMissBlock(nn.Module):
         self.depth = depth
         self.dtype = dtype
         self.mu = Parameter(torch.empty(n_features, dtype=dtype))
-        self.linear = Linear(n_features, n_features, bias=False, dtype=dtype)
+        self.linear = Linear(n_features, n_features, bias=False)  #, dtype=dtype)
         self.reset_parameters()
 
     def forward(self, x: Tensor) -> Tensor:
