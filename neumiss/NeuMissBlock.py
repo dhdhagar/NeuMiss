@@ -31,8 +31,8 @@ def anderson_solver(f, x0, m=5, lam=1e-4, max_iter=50, tol=1e-2, beta = 1.0):
             n = min(k, m)
             G = F[:,:n]-X[:,:n]
             H[:,1:n+1,1:n+1] = torch.bmm(G,G.transpose(1,2)) + lam*torch.eye(n, dtype=x0.dtype,device=x0.device)[None]
-            alpha = torch.linalg.solve(y[:,:n+1], H[:,:n+1,:n+1])[0][:, 1:n+1, 0]   # (bsz x n)
             
+            alpha = torch.linalg.solve(H[:,:n+1,:n+1], y[:,:n+1])[:, 1:n+1, 0]  # (bsz x n)
             X[:,k%m] = beta * (alpha[:,None] @ F[:,:n])[:,0] + (1-beta)*(alpha[:,None] @ X[:,:n])[:,0]
             F[:,k%m] = f(X[:,k%m].view_as(x0)).view(bsz, -1)
             res.append((F[:,k%m] - X[:,k%m]).norm().item()/(1e-5 + F[:,k%m].norm().item()))
@@ -173,6 +173,7 @@ class NeuMissIteration(nn.Module):
         self.reset_parameters()
 
     def forward(self, x: Tensor, mask: Mask, skip: SkipConnection) -> Tensor:
+        x = x.type(self.dtype)  # Cast tensor to appropriate dtype
         return skip(mask(self.linear(x)))
 
     def reset_parameters(self) -> None:
@@ -215,18 +216,18 @@ class NeuMissDEQBlock(nn.Module):
         # compute forward pass outside of autograd tape
         with torch.no_grad():
             z, self.forward_res = self.solver(lambda z: self.neumiss(z, mask, skip), 
-                                              h,  # torch.zeros_like(h),
+                                              torch.zeros_like(h),  # h
                                               **self.kwargs)
         # re-engage autograd tape at the equilibrium point
         z = self.neumiss(z, mask, skip)
         
         # set up the vector jacobian product
         z0 = z.clone().detach().requires_grad_()
-        f0 = self.f(z0, mask, skip)
+        f0 = self.neumiss(z0, mask, skip)
         def backward_hook(in_grad):
             g, self.backward_res = self.solver(lambda g: autograd.grad(f0, z0, g, retain_graph=True)[0] + in_grad,
                                                in_grad, **self.kwargs)  # autograd.grad computes a VJP of df0/dz0 with g
             return g
-                
+
         z.register_hook(backward_hook)
         return z
