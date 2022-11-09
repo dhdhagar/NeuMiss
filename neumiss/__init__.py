@@ -1,1 +1,1 @@
-from .NeuMissBlock import NeuMissBlock, NeuMissMLP
+from .NeuMissBlock import NeuMissBlock, NeuMissMLP, NeuMissDEQBlock
