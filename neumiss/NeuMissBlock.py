@@ -3,6 +3,7 @@ from torch import Tensor, nn
 from torch.nn import Linear, Parameter, ReLU, Sequential
 from torch.types import _dtype
 import torch.autograd as autograd
+from typing import Callable
 
 
 def anderson_solver(f, x0, m=5, lam=1e-4, max_iter=50, tol=1e-2, beta = 1.0):
@@ -185,7 +186,7 @@ class NeuMissDEQBlock(nn.Module):
 
     def __init__(self, 
                  n_features: int, 
-                 solver: function = anderson_solver,
+                 solver: Callable = anderson_solver,
                  dtype: _dtype = torch.float,
                  **kwargs) -> None:
         """
@@ -193,7 +194,7 @@ class NeuMissDEQBlock(nn.Module):
         ----------
         n_features : int
             Dimension of inputs and outputs of the NeuMiss block.
-        solver : function
+        solver : Callable
             Function that solves a fixed-point iteration problem.
         dtype : _dtype
             Pytorch dtype for the parameters. Default: torch.float.
