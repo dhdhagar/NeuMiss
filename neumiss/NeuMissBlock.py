@@ -221,13 +221,14 @@ class NeuMissDEQBlock(nn.Module):
         # re-engage autograd tape at the equilibrium point
         z = self.neumiss(z, mask, skip)
         
-        # set up the vector jacobian product
-        z0 = z.clone().detach().requires_grad_()
-        f0 = self.neumiss(z0, mask, skip)
-        def backward_hook(in_grad):
-            g, self.backward_res = self.solver(lambda g: autograd.grad(f0, z0, g, retain_graph=True)[0] + in_grad,
-                                               in_grad, **self.kwargs)  # autograd.grad computes a VJP of df0/dz0 with g
-            return g
+        if x.requires_grad:
+            # set up the vector jacobian product
+            z0 = z.clone().detach().requires_grad_()
+            f0 = self.neumiss(z0, mask, skip)
+            def backward_hook(in_grad):
+                g, self.backward_res = self.solver(lambda g: autograd.grad(f0, z0, g, retain_graph=True)[0] + in_grad,
+                                                in_grad, **self.kwargs)  # autograd.grad computes a VJP of df0/dz0 with g
+                return g
 
-        z.register_hook(backward_hook)
+            z.register_hook(backward_hook)
         return z
